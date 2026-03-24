@@ -1,0 +1,168 @@
+---
+title: "Analysis Report 1"
+author: "Grant Spivey"
+output: pdf_document
+date: "`r Sys.Date()`"
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+poke <- read.csv("pokemondataset")
+```
+
+# Data Description
+
+The data I am using for this report is titled the "The Complete Pokemon Dataset" and comes from kaggle.com. The dataset contains data about Pokemon from video game generations 1-7, including various Pokemon attributes such as name, type, generation, Pokedex number, abilities, stats (attack, defense, speed, etc.) and other various information about each Pokemon.
+
+# Research Question
+
+The research question guiding the report is: "Are certain Pokemon types more common in certain generations?"
+I am personally curious about this question, as I am somewhat familiar with at least one generation having a notable type preference.
+
+# Variables of Interest
+
+The specific variables I am curious about are:
+
+generation - this is a categorical variable with categories ranging from generations 1-7 in the dataset, representing which generation of Pokemon games the Pokemon was introduced in
+
+type1 - this variable is a categorical variable with various "types" that Pokemon belong to (such as water, fire, grass, etc.), type1 specifically represents the primary or main type a Pokemon has; every Pokemon has at least one type but some have two (listed in variable type2)
+
+type2 - similar to the type1 variable, but this variable encompasses secondary types; not every Pokemon has two types
+
+# Data Wrangling
+
+In this section the main data wrangling I perform is checking for missing values. For variables type1 and generation, there were no missing values as expected. For type2, there were missing values that were unconventionally storing blank strings instead of an NA value, so I checked for empty strings.
+
+```{r}
+colSums(is.na(poke))
+# no NA values in type1 or generation
+#says there are 0 NA values for type2, must contain an empty string instead of no value
+
+sum(poke$type2 == "")
+# 384 missing values in type2
+
+sum(poke$type1 == "")
+sum(poke$generation == "")
+# confirmed no missing values for type1 or generation
+
+
+```
+
+
+# Data Visualizations
+
+# Visualization 1
+
+This visualization shows us the distribution of type1 across each generation; here we are focusing on primary types instead of factoring in secondary types.
+
+
+```{r}
+library(dplyr)
+require(tidyverse)
+
+type_count <- poke %>% 
+  group_by(generation, type1) %>% 
+  summarise(count = n(), .groups = "drop") %>% 
+  arrange(desc(count))
+
+head(type_count)
+
+#arranging and counting number of Pokemon belonging to a certain type1 per generation
+```
+
+```{r}
+library(ggplot2)
+
+ggplot(type_count,
+       aes(x = factor(generation),
+           y = count,
+           fill = type1)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Pokemon Type1 Distribution Across Generations 1-7",
+       x = "Generation",
+       y = "Count",
+       fill = "Type")
+```
+
+# Analytic Interpretation 1
+
+For this first visualization, we see that water types and normal types are the most prevalent throughout generations 1-4, then generations 5-7 appear to stray away from this initial pattern with generation 5 having more bug types yet with water and normal trailing behind, generation 6 has more fairy types and fire types with normal trailing behind, and lastly generation 7 has more grass and normal types with water trailing behind. Normal type is consistently highly represented within all generations, and water is similarly quite popular although generations 5-7 seem to prioritize other types over water. This visualization only considers primary types, so it may not encompass the entire trend of each generation. The overall count falling as generations progress mostly has to do with later games choosing to not include some previous Pokemon in the base game. A notable example of this is generation 5 which did not bring back any previous generation Pokemon and only featured brand new Pokemon; this could account for its distinct bug type prevalence.
+
+# Visualization 2
+
+This visualization shows us the distribution of types 1 and 2 combined across each generation; meaning some Pokemon are counted twice in terms of type representation
+
+```{r}
+poke_long <- poke %>% 
+  pivot_longer(cols = c(type1, type2), names_to = "Type_Column", values_to = "Type") %>% 
+  filter(Type != "")
+
+type_count2 <- poke_long %>% 
+  group_by(generation, Type) %>% 
+  summarise(count = n(), .groups = "drop") %>% 
+  arrange(desc(count))
+
+head(type_count2)
+```
+
+```{r}
+ggplot(type_count2,
+       aes(x = factor(generation),
+           y = count,
+           fill = Type)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Pokemon Type Distribution Across Generations 1-7",
+       x = "Generation",
+       y = "Count",
+       fill = "Type")
+```
+
+# Analytic Interpretation 2
+
+This visualization more accurately represents all type prevalence and reveals some patterns that we did not notice by only counting primary types. For example, generation 1 actually has the highest prevalence of poison types follow by water types, instead of merely normal types. Across all generations, it appears that dragon, fairy, and ice types are all very low in prevalence. This would be consistent with their introductions in the games, as none of these three types were part of the original types introduced in the first generation of games. Overall, water appears to be the most consistently prevalent type across all games.
+
+# Visualization 3
+
+This visualization is a heatmap that can help spot patterns across each generation the heatmap uses both type1 and type2 combined.
+
+```{r}
+heatmap <- poke_long %>% 
+  group_by(generation, Type) %>% 
+  summarise(count = n(), .groups = "drop") %>% 
+  pivot_wider(names_from = generation, values_from = count, values_fill = 0)
+
+heatmap_long <- heatmap %>% 
+  pivot_longer(cols = -Type, names_to = "Generation", values_to = "Count")
+
+ggplot(heatmap_long, aes(x = Generation,
+                         y = Type,
+                         fill = Count)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient(low = "white", high = "blue") +
+  labs(title = "Pokemon Type Prevalence by Generation",
+       x = "Generation",
+       y = "Type",
+       fill = "Count") +
+  theme_minimal()
+
+
+```
+
+# Analytic Interpretation 3
+
+This heatmap visualization is the most useful and neat for visualizing prevalence of types within each generation as well as how they compare to other generations. Generation 1 appears to have the most bias towards certain types, with generation 3 also having lots of bias. Generations 4 and 5 appear to have the most even distributions and generations 2, 6, and 7 all have an interesting lack of certain types. Overall water appears to be a very prevalent type across all generations, followed by normal types and then grass types. Interestingly, fire types do not appear as prevalent as one might expect.
+
+# Discussion
+
+  The key takeaways for this analysis are that not all generations in Pokemon appear to value balanced type diversity. There are some generations such as 1 and 3 which have clear bias towards water and some generations such as 2, 6, and 7 which lack representation for some types altogether. Some generations do appear to have a more balanced distribution, but overall it seems that water and normal types are some of the most common types across all generations.
+
+  It makes sense that water and normal types are very prevalent, as both types were introduced in the first generation and design-wise it is probably simpler to both design and balance Pokemon from these basic types. Interestingly, while grass type is also trailing in prevalence, fire types appear to not be especially prevalent in any game despite being a generation 1 type that one would assume is very popular due to the notoriety of fire type Pokemon such as Charizard and since fire is one of the three starting types featured in starter Pokemon alongside water and grass. 
+  
+  Some limitations with this analysis could be that including both type1 and type2 types can lead to double counting Pokemon. This could lead to misleading results by over representing certain types. Furthermore, not all types are treated equally in-game; some types are much more commonly found as secondary types and not as primary types, and some types are usually reserved for more exclusive Pokemon such as the dragon type which is more common amongst exclusive/rare legendary or pseudo-legendary Pokemon. 
+  
+  A potential future line of research to further streamline analysis and better answer the research question is to account for types that are typically reserved for exclusive Pokemon or for secondary types in order to get a better understanding of the overall distribution. One could also account for Pokemon rarity when analyzing the prevalence of types in each generations. For example, in my analysis fire types appear to not be very highly represented in terms of individual Pokemon, but in game it is possible that finding fire types are very common. Using data regarding Pokemon appearance rates could help answer whether certain types are more prevalent in certain generations with regards to actual encounters in game.
+
